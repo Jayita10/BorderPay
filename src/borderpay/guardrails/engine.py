@@ -1,7 +1,8 @@
 from dataclasses import dataclass
+from datetime import datetime
 
-from borderpay.domain.conversion import quote_conversion
 from borderpay.guardrails.budget import max_affordable_inr_minor
+from borderpay.guardrails.deadline import deadline_has_passed
 from borderpay.guardrails.target import cap_to_target
 
 
@@ -12,6 +13,7 @@ class GuardrailResult:
     reason: str
     budget_limited: bool
     target_limited: bool
+    deadline_triggered: bool
 
 
 def evaluate_conversion(
@@ -20,6 +22,8 @@ def evaluate_conversion(
     remaining_inr_minor: int,
     remaining_usd_minor: int,
     usd_inr_rate: float,
+    now: datetime,
+    deadline: datetime,
     proportional_fee_bps: int = 150,
     fixed_fee_inr_minor: int = 4_000,
 ) -> GuardrailResult:
@@ -40,6 +44,17 @@ def evaluate_conversion(
             reason="transfer target already met",
             budget_limited=False,
             target_limited=False,
+            deadline_triggered=False,
+        )
+
+    if deadline_has_passed(now=now, deadline=deadline):
+        return GuardrailResult(
+            approved=False,
+            approved_inr_minor=0,
+            reason="deadline has passed",
+            budget_limited=False,
+            target_limited=False,
+            deadline_triggered=True,
         )
 
     affordable = max_affordable_inr_minor(
@@ -54,10 +69,7 @@ def evaluate_conversion(
         remaining_inr_minor=remaining_inr_minor,
     )
 
-    approved_amount = min(
-        target_capped,
-        affordable,
-    )
+    approved_amount = min(target_capped, affordable)
 
     if approved_amount == 0:
         return GuardrailResult(
@@ -66,6 +78,7 @@ def evaluate_conversion(
             reason="conversion is not affordable within remaining budget",
             budget_limited=True,
             target_limited=target_capped < proposed_inr_minor,
+            deadline_triggered=False,
         )
 
     budget_limited = affordable < target_capped
@@ -88,4 +101,5 @@ def evaluate_conversion(
         reason="; ".join(reasons),
         budget_limited=budget_limited,
         target_limited=target_limited,
+        deadline_triggered=False,
     )
