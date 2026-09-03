@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "borderpay"
+version = "0.1.0"
+description = "Autonomous FX timing agent for deadline-bound transfers"
+requires-python = ">=3.12"
+
+dependencies = [
+    "httpx",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
